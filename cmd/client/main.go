@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log/slog"
 	"os"
@@ -11,13 +13,17 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
 	echov1 "github.com/e-flux-platform/echo-grpc/gen/go/road/echo/v1"
 )
 
 func main() {
-	var serverAddr string
+	var (
+		serverAddr string
+		useTLS     bool
+	)
 
 	app := &cli.App{
 		Flags: []cli.Flag{
@@ -27,12 +33,17 @@ func main() {
 				Destination: &serverAddr,
 				Required:    true,
 			},
+			&cli.BoolFlag{
+				Name:        "tls",
+				EnvVars:     []string{"TLS"},
+				Destination: &useTLS,
+			},
 		},
 		Action: func(cCtx *cli.Context) error {
 			ctx, cancel := signal.NotifyContext(cCtx.Context, syscall.SIGTERM, syscall.SIGINT)
 			defer cancel()
 
-			return run(ctx, serverAddr, cCtx.Args().First())
+			return run(ctx, serverAddr, useTLS, cCtx.Args().First())
 		},
 	}
 
@@ -42,8 +53,19 @@ func main() {
 	}
 }
 
-func run(ctx context.Context, serverAddr, message string) error {
-	conn, err := grpc.NewClient(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func run(ctx context.Context, serverAddr string, useTLS bool, message string) error {
+	var transportCredentials credentials.TransportCredentials
+	if useTLS {
+		rootCAs, _ := x509.SystemCertPool()
+		tlsConfig := &tls.Config{
+			RootCAs: rootCAs,
+		}
+		transportCredentials = credentials.NewTLS(tlsConfig)
+	} else {
+		transportCredentials = insecure.NewCredentials()
+	}
+
+	conn, err := grpc.NewClient(serverAddr, grpc.WithTransportCredentials(transportCredentials))
 	if err != nil {
 		return err
 	}
