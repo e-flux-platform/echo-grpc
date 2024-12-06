@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
 	echov1 "github.com/e-flux-platform/echo-grpc/gen/go/road/echo/v1"
@@ -53,6 +54,7 @@ func run(ctx context.Context, listenAddr string) error {
 
 	srv := grpc.NewServer()
 	echov1.RegisterEchoServiceServer(srv, &server{})
+	reflection.Register(srv)
 
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
