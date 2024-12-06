@@ -19,31 +19,51 @@ import (
 	echov1 "github.com/e-flux-platform/echo-grpc/gen/go/road/echo/v1"
 )
 
+type config struct {
+	serverAddr   string
+	useTLS       bool
+	clientRootCA string
+	clientKey    string
+	clientCert   string
+}
+
 func main() {
-	var (
-		serverAddr string
-		useTLS     bool
-	)
+	var cfg config
 
 	app := &cli.App{
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:        "server-addr",
 				EnvVars:     []string{"SERVER_ADDR"},
-				Destination: &serverAddr,
+				Destination: &cfg.serverAddr,
 				Required:    true,
 			},
 			&cli.BoolFlag{
 				Name:        "tls",
 				EnvVars:     []string{"TLS"},
-				Destination: &useTLS,
+				Destination: &cfg.useTLS,
+			},
+			&cli.StringFlag{
+				Name:        "client-cert",
+				EnvVars:     []string{"CLIENT_CERT"},
+				Destination: &cfg.clientCert,
+			},
+			&cli.StringFlag{
+				Name:        "client-key",
+				EnvVars:     []string{"CLIENT_KEY"},
+				Destination: &cfg.clientKey,
+			},
+			&cli.StringFlag{
+				Name:        "client-root-ca",
+				EnvVars:     []string{"CLIENT_ROOT_CA"},
+				Destination: &cfg.clientRootCA,
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
 			ctx, cancel := signal.NotifyContext(cCtx.Context, syscall.SIGTERM, syscall.SIGINT)
 			defer cancel()
 
-			return run(ctx, serverAddr, useTLS, cCtx.Args().First())
+			return run(ctx, cfg, cCtx.Args().First())
 		},
 	}
 
@@ -53,19 +73,38 @@ func main() {
 	}
 }
 
-func run(ctx context.Context, serverAddr string, useTLS bool, message string) error {
+func run(ctx context.Context, cfg config, message string) error {
 	var transportCredentials credentials.TransportCredentials
-	if useTLS {
-		rootCAs, _ := x509.SystemCertPool()
+	if cfg.useTLS {
+		systemCertPool, _ := x509.SystemCertPool()
 		tlsConfig := &tls.Config{
-			RootCAs: rootCAs,
+			RootCAs: systemCertPool,
 		}
+
+		if cfg.clientKey != "" && cfg.clientCert != "" {
+			cert, err := tls.LoadX509KeyPair(cfg.clientCert, cfg.clientKey)
+			if err != nil {
+				return err
+			}
+			tlsConfig.Certificates = []tls.Certificate{cert}
+		}
+
+		if cfg.clientRootCA != "" {
+			clientCA, err := os.ReadFile(cfg.clientRootCA)
+			if err != nil {
+				return err
+			}
+			clientCertPool := x509.NewCertPool()
+			clientCertPool.AppendCertsFromPEM(clientCA)
+			tlsConfig.ClientCAs = clientCertPool
+		}
+
 		transportCredentials = credentials.NewTLS(tlsConfig)
 	} else {
 		transportCredentials = insecure.NewCredentials()
 	}
 
-	conn, err := grpc.NewClient(serverAddr, grpc.WithTransportCredentials(transportCredentials))
+	conn, err := grpc.NewClient(cfg.serverAddr, grpc.WithTransportCredentials(transportCredentials))
 	if err != nil {
 		return err
 	}
