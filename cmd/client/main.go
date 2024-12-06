@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -118,6 +119,11 @@ func run(ctx context.Context, cfg config, message string) error {
 	}
 
 	fmt.Printf("response from server: %s\n", res.Message)
+
+	fmt.Println("metadata from server:")
+	for _, item := range res.Metadata.Items {
+		fmt.Printf("%s: %s\n", item.Key, strings.Join(item.Values, ", "))
+	}
 
 	return nil
 }

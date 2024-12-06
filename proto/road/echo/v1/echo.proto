@@ -12,4 +12,14 @@ message EchoRequest {
 
 message EchoResponse {
   string message = 1;
+  Metadata metadata = 2;
+}
+
+message Metadata {
+  repeated MetadataItem items = 1;
+}
+
+message MetadataItem {
+  string key = 1;
+  repeated string values = 2;
 }

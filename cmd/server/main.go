@@ -12,6 +12,9 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	echov1 "github.com/e-flux-platform/echo-grpc/gen/go/road/echo/v1"
 )
@@ -66,5 +69,23 @@ func run(ctx context.Context, listenAddr string) error {
 type server struct{}
 
 func (s *server) Echo(ctx context.Context, request *echov1.EchoRequest) (*echov1.EchoResponse, error) {
-	return &echov1.EchoResponse{Message: request.Message}, nil
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.DataLoss, "failed to get metadata")
+	}
+
+	items := make([]*echov1.MetadataItem, 0, len(md))
+	for key, values := range md {
+		items = append(items, &echov1.MetadataItem{
+			Key:    key,
+			Values: values,
+		})
+	}
+
+	return &echov1.EchoResponse{
+		Message: request.Message,
+		Metadata: &echov1.Metadata{
+			Items: items,
+		},
+	}, nil
 }
