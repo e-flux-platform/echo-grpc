@@ -78,7 +78,7 @@ func run(ctx context.Context, serverAddr string, useTLS bool, message string) er
 		return err
 	}
 
-	fmt.Printf("received from server: %s\n", res.Message)
+	fmt.Printf("response from server: %s\n", res.Message)
 
 	return nil
 }
