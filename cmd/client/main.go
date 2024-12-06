@@ -118,11 +118,13 @@ func run(ctx context.Context, cfg config, message string) error {
 		return err
 	}
 
-	fmt.Printf("response from server: %s\n", res.Message)
+	fmt.Printf("response from server: %s\n", res.GetMessage())
 
-	fmt.Println("metadata from server:")
-	for _, item := range res.Metadata.Items {
-		fmt.Printf("%s: %s\n", item.Key, strings.Join(item.Values, ", "))
+	if metadata := res.GetMetadata(); metadata != nil {
+		fmt.Println("metadata from server:")
+		for _, item := range metadata.GetItems() {
+			fmt.Printf("%s: %s\n", item.Key, strings.Join(item.Values, ", "))
+		}
 	}
 
 	return nil
