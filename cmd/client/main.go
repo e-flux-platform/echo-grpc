@@ -123,7 +123,7 @@ func run(ctx context.Context, cfg config, message string) error {
 	if metadata := res.GetMetadata(); metadata != nil {
 		fmt.Println("metadata from server:")
 		for _, item := range metadata.GetItems() {
-			fmt.Printf("%s: %s\n", item.Key, strings.Join(item.Values, ", "))
+			fmt.Printf(" - %s: %s\n", item.Key, strings.Join(item.Values, ", "))
 		}
 	}
 
